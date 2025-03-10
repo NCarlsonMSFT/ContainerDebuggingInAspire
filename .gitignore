@@ -364,3 +364,9 @@ FodyWeavers.xsd
 
 # Local copy of vsdbg
 /ContainerDebugging.AppHost/vsdbg
+
+# local testing certs
+/ContainerDebugging.AppHost/Certs/localhost.pfx
+/ContainerDebugging.AppHost/Certs/Password.txt
+/ContainerDebugging.AppHost/Certs/test-ca.crt
+/ContainerDebugging.AppHost/Certs/test-ca.pfx

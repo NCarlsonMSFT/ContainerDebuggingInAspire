@@ -6,17 +6,29 @@ using System.Runtime.InteropServices.ComTypes;
 public static class ContainerHelpers
 {
     private const string AttachLabel = "attach";
+    private const string TrustLabel = "trust";
     public static IResourceBuilder<ContainerResource> AddDebuggableContainer(this IDistributedApplicationBuilder builder, [ResourceName] string name,
-        string projectName, string image, string tag = "latest", int? targetHttpPort = 8080)
+        string projectName, string image, string tag = "latest", int? targetHttpPort = 8080, int? targetHttpsPort = 8081)
     {
         var containerResource = builder.AddContainer(name, image)
             .WithImageTag(tag)
-            .WithOtlpExporter();
+            .WithOtlpExporter()
+            .WithGeneratedCertificateTrust();
 
         // If an http port is specified, add it to the container resource
         if (targetHttpPort != null)
         {
-            containerResource.WithHttpEndpoint(targetPort: targetHttpPort.Value);
+            containerResource.WithHttpEndpoint(targetPort: targetHttpPort.Value)
+                             .WithEnvironment("ASPNETCORE_HTTP_PORTS", targetHttpPort.Value.ToString());
+        }
+
+        // If an https port is specified, add it and a certificate to the container resource
+        if (targetHttpsPort != null)
+        {
+            containerResource.WithHttpsEndpoint(targetPort: targetHttpsPort.Value)
+                             .WithEnvironment("ASPNETCORE_HTTPS_PORTS", targetHttpsPort.Value.ToString())
+                             .WithEnvironment("ASPNETCORE_HTTPS_PORT", () => containerResource.GetEndpoint("https").Port.ToString())
+                             .WithGeneratedCertificate();
         }
 
         // If the host is being debugged, queue a thread to attach to the container
@@ -33,6 +45,47 @@ public static class ContainerHelpers
         return containerResource;
     }
 
+    public static IResourceBuilder<ContainerResource> WithGeneratedCertificate(this IResourceBuilder<ContainerResource> containerResource)
+    {
+        (_, string password) = EnsureGeneratedCertificate(containerResource.ApplicationBuilder);
+
+        containerResource
+            .WithBindMount(Path.Combine(containerResource.ApplicationBuilder.AppHostDirectory, "Certs"), "/Certs/", true)
+            .WithEnvironment("ASPNETCORE_Kestrel__Certificates__Default__Path", "/Certs/localhost.pfx")
+            .WithEnvironment("ASPNETCORE_Kestrel__Certificates__Default__Password", password);
+        return containerResource;
+    }
+
+    public static IResourceBuilder<ContainerResource> WithGeneratedCertificateTrust(this IResourceBuilder<ContainerResource> containerResource)
+    {
+        // Add a label so we can find the container once it is running
+        string trustLabelValue = Guid.NewGuid().ToString("N");
+        containerResource
+          .WithContainerRuntimeArgs("--label", $"{TrustLabel}={trustLabelValue}");
+
+        StartWatchingConainerForTrust(trustLabelValue);
+
+        return containerResource;
+    }
+
+    public static (string path, string password) EnsureGeneratedCertificate(IDistributedApplicationBuilder builder)
+    {
+        string certsDir = Path.Combine(builder.AppHostDirectory, "Certs");
+
+        if (!File.Exists(Path.Combine(builder.AppHostDirectory, "Certs", "localhost.pfx")))
+        {
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = "-NoProfile -ExecutionPolicy unrestricted -File \"" + Path.Combine(certsDir, "Create-Certs.ps1") + '"',
+            };
+            Process certGenerator = Process.Start(processStartInfo);
+            certGenerator.WaitForExit();
+        }
+
+        return (Path.Combine(certsDir, "localhost.pfx"), File.ReadAllText(Path.Combine(certsDir, "Password.txt")));
+    }
+
     public static void DownloadVsdbg(string vsdbgPath)
     {
         // From https://github.com/Microsoft/MIEngine/wiki/Offroad-Debugging-of-.NET-Core-on-Linux---OSX-from-Visual-Studio
@@ -46,6 +99,24 @@ public static class ContainerHelpers
         };
         Process vsdbgGetter = Process.Start(processStartInfo);
         vsdbgGetter.WaitForExit();
+    }
+
+    private static void StartWatchingConainerForTrust(string trustLabelValue)
+    {
+        ThreadPool.QueueUserWorkItem((_) =>
+        {
+            string containerId = GetContainerId(TrustLabel, trustLabelValue);
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = $"exec -u root {containerId} /bin/bash /Certs/TrustCerts.sh",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            Process docker = Process.Start(processStartInfo);
+            docker.WaitForExit();
+        });
     }
 
     private static Thread StartAttachingToContainer(string projectName, string attachLabelValue)
@@ -64,7 +135,7 @@ public static class ContainerHelpers
 
     private static void AttachToContainer(string projectName, string attachLabelValue)
     {
-        string containerId = GetContainerId(attachLabelValue);
+        string containerId = GetContainerId(AttachLabel, attachLabelValue);
         // Register the message filter
         MessageFilter.Register();
         try
@@ -167,12 +238,12 @@ public static class ContainerHelpers
         return null;
     }
 
-    private static string GetContainerId(string attachLabelValue)
+    private static string GetContainerId(string labelname, string labelValue)
     {
         ProcessStartInfo processStartInfo = new ProcessStartInfo
         {
             FileName = "docker",
-            Arguments = $"ps -q --filter \"label={AttachLabel}={attachLabelValue}\"",
+            Arguments = $"ps -q --filter \"label={labelname}={labelValue}\"",
             RedirectStandardOutput = true,
             UseShellExecute = false,
             CreateNoWindow = true
@@ -186,7 +257,7 @@ public static class ContainerHelpers
 
             if (docker.ExitCode != 0 || outputLines.Length == 0)
             {
-                System.Threading.Thread.Sleep(1000);
+                System.Threading.Thread.Sleep(100);
                 continue;
             }
 

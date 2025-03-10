@@ -2,7 +2,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 #if RUN_IN_CONTAINER
 
+// Ensure vsdbg has been downloaded
 ContainerHelpers.DownloadVsdbg(Path.Combine(builder.AppHostDirectory, "vsdbg"));
+
+// Configure the Apire host to use a cert that handles host.docker.internal
+(string certPath, string certPassword) = ContainerHelpers.EnsureGeneratedCertificate(builder);
+Environment.SetEnvironmentVariable("ASPNETCORE_Kestrel__Certificates__Default__Path", certPath);
+Environment.SetEnvironmentVariable("ASPNETCORE_Kestrel__Certificates__Default__Password", certPassword);
 
 var apiService = builder.AddDebuggableContainer(
                             name: "apiservice",
@@ -15,7 +21,8 @@ var webfrontend = builder.AddDebuggableContainer(
                             projectName: "ContainerDebugging.Web",
                             image: "containerdebuggingweb",
                             tag: "dev")
-                    .WithReference(apiService.GetEndpoint("http"));
+                    .WithReference(apiService.GetEndpoint("http"))
+                    .WithReference(apiService.GetEndpoint("https"));
 
 #else
 

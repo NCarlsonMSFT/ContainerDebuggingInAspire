@@ -38,7 +38,8 @@ public static class ContainerHelpers
             string attachLabelValue = Guid.NewGuid().ToString("N");
             containerResource
               .WithBindMount(Path.Combine(builder.AppHostDirectory, "vsdbg"), "/remote_debugger/", true)
-              .WithContainerRuntimeArgs("--label", $"{AttachLabel}={attachLabelValue}");
+              .WithContainerRuntimeArgs("--label", $"{AttachLabel}={attachLabelValue}")
+              .WithEnvironment("WAIT_FOR_DEBUGGING", "true");
 
             StartAttachingToContainer(projectName, attachLabelValue);
         }
@@ -61,7 +62,8 @@ public static class ContainerHelpers
         // Add a label so we can find the container once it is running
         string trustLabelValue = Guid.NewGuid().ToString("N");
         containerResource
-          .WithContainerRuntimeArgs("--label", $"{TrustLabel}={trustLabelValue}");
+          .WithContainerRuntimeArgs("--label", $"{TrustLabel}={trustLabelValue}")
+          .WithEnvironment("WAIT_FOR_CERT", "true");
 
         StartWatchingConainerForTrust(trustLabelValue);
 

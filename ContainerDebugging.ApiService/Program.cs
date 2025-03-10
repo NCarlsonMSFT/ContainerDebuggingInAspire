@@ -1,3 +1,7 @@
+#if RUN_IN_CONTAINER
+ContainerDebugging.ServiceDefaults.ContainerHelpers.WaitForSetup();
+#endif
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add service defaults & Aspire client integrations.

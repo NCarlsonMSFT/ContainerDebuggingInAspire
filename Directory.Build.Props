@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ContainerDebug|AnyCPU'">
+    <DefineConstants>$(DefineConstants);DEBUG;RUN_IN_CONTAINER</DefineConstants>
+    <RunInContainer>true</RunInContainer>
+  </PropertyGroup>
+</Project>

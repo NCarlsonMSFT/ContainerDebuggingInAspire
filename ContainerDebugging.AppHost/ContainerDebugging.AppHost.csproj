@@ -9,6 +9,7 @@
     <Nullable>enable</Nullable>
     <IsAspireHost>true</IsAspireHost>
     <UserSecretsId>5a0550b3-ac17-4d6b-ad24-a66d8169f816</UserSecretsId>
+    <Configurations>Debug;Release;ContainerDebug</Configurations>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,11 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="9.1.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='ContainerDebug|AnyCPU'">
+    <PackageReference Include="envdte" version="17.13.40008" />
+    <PackageReference Include="Microsoft.VisualStudio.Interop" version="17.13.40008" />
   </ItemGroup>
 
 </Project>

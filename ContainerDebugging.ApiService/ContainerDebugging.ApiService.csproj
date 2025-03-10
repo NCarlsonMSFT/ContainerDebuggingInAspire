@@ -4,6 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ContainerRepository>containerdebuggingapiservice</ContainerRepository>
+    <Configurations>Debug;Release;ContainerDebug</Configurations>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(RunInContainer)' == true">
+    <PublishProfile>DefaultContainer</PublishProfile>
+    <ContainerImageTag>dev</ContainerImageTag>
+    <DeployOnBuild>true</DeployOnBuild>
   </PropertyGroup>
 
   <ItemGroup>

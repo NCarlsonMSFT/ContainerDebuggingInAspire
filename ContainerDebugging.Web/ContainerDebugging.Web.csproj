@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <ContainerRepository>containerdebuggingweb</ContainerRepository>
     <Configurations>Debug;Release;ContainerDebug</Configurations>
+    <EnableSdkContainerDebugging>True</EnableSdkContainerDebugging>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:8.0</ContainerBaseImage>
+    <UserSecretsId>7a620ba6-69b6-46a2-9de8-89db3ccaef0f</UserSecretsId>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(RunInContainer)' == true">
@@ -14,8 +17,16 @@
     <DeployOnBuild>true</DeployOnBuild>
   </PropertyGroup>
 
+  <ItemGroup Condition=" '$(RunInContainer)' == true">
+    <ContainerLabel Include="trust" Value="webfrontend" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ContainerDebugging.ServiceDefaults\ContainerDebugging.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ContainerPort Include="8081" />
   </ItemGroup>
 
 </Project>

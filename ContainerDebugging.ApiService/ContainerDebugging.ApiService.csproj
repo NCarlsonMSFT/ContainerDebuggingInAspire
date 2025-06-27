@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <ContainerRepository>containerdebuggingapiservice</ContainerRepository>
     <Configurations>Debug;Release;ContainerDebug</Configurations>
+    <EnableSdkContainerDebugging>True</EnableSdkContainerDebugging>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:8.0</ContainerBaseImage>
+    <UserSecretsId>090d9242-5919-4fd8-b4fa-2900cb7f3d24</UserSecretsId>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(RunInContainer)' == true">
@@ -14,11 +17,19 @@
     <DeployOnBuild>true</DeployOnBuild>
   </PropertyGroup>
 
+  <ItemGroup Condition=" '$(RunInContainer)' == true">
+    <ContainerLabel Include="trust" Value="apiservice" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\ContainerDebugging.ServiceDefaults\ContainerDebugging.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ContainerPort Include="8081" />
   </ItemGroup>
 
 </Project>
